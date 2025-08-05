@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamified Habit Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top for better scrolling on small screens */
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Rounded corners for the main container */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 900px;
+        }
+        .progress-bar-container {
+            background-color: #e0e0e0;
+            border-radius: 9999px; /* Fully rounded */
+            height: 12px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            background-color: #3b82f6; /* Blue-500 */
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s ease-in-out;
+        }
+        .badge-icon {
+            font-size: 1.5rem; /* Adjust size as needed */
+            line-height: 1;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50; /* Green */
+            color: white;
+            padding: 15px 20px;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+    <div class="container mx-auto p-6 bg-white rounded-3xl shadow-xl space-y-8 md:space-y-10">
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-center text-gray-800 mb-8 tracking-tight">
+            Level Up Your Habits! 🚀
+        </h1>
+
+        <!-- User Setup Section -->
+        <div id="user-setup" class="bg-blue-50 p-6 rounded-2xl shadow-inner border border-blue-200">
+            <h2 class="text-2xl font-bold text-blue-700 mb-4">Welcome, Adventurer!</h2>
+            <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <input type="text" id="username-input" placeholder="Enter your username"
+                       class="flex-grow p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 shadow-sm">
+                <button id="set-username-btn"
+                        class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105">
+                    Start Journey
+                </button>
+            </div>
+        </div>
+
+        <!-- Main App Section (Hidden until username is set) -->
+        <div id="main-app" class="hidden">
+            <!-- User Status Section -->
+            <div class="bg-purple-50 p-6 rounded-2xl shadow-inner border border-purple-200 mb-8">
+                <h2 class="text-2xl font-bold text-purple-700 mb-4">Your Progress</h2>
+                <p class="text-gray-700 mb-2">Hello, <span id="display-username" class="font-semibold text-purple-800"></span>!</p>
+                <div class="mb-4">
+                    <p class="text-lg font-semibold text-gray-800">Level: <span id="user-level">1</span></p>
+                    <p class="text-sm text-gray-600">Total XP: <span id="user-total-xp">0</span> / <span id="xp-to-next-level-total">0</span></p>
+                    <div class="progress-bar-container mt-2">
+                        <div id="level-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-gray-800 mt-6 mb-3">🏆 Your Badges:</h3>
+                <!-- Moved no-badges-message outside badges-display to prevent it from being cleared -->
+                <p id="no-badges-message" class="text-gray-500 italic mb-4">No badges earned yet.</p>
+                <div id="badges-display" class="flex flex-wrap gap-3">
+                    <!-- Badges will be injected here by JS -->
+                </div>
+
+                <h3 class="text-xl font-semibold text-gray-800 mb-3 mt-6">Category Progress:</h3>
+                <div id="category-progress-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Category progress bars will be injected here by JS -->
+                </div>
+            </div>
+
+            <!-- Add New Habit Section -->
+            <div class="bg-green-50 p-6 rounded-2xl shadow-inner border border-green-200 mb-8">
+                <h2 class="text-2xl font-bold text-green-700 mb-4">Add a New Habit</h2>
+                <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <input type="text" id="new-habit-name" placeholder="E.g., Read 20 pages"
+                           class="flex-grow p-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 shadow-sm">
+                    <select id="new-habit-category"
+                            class="w-full sm:w-auto p-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 shadow-sm bg-white">
+                        <option value="">Select Category</option>
+                        <option value="diet">Diet</option>
+                        <option value="exercise">Exercise</option>
+                        <option value="reading">Reading</option>
+                        <option value="journaling">Journaling</option>
+                        <option value="meditation">Meditation</option>
+                    </select>
+                    <button id="add-habit-btn"
+                            class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105">
+                        Add Habit
+                    </button>
+                </div>
+            </div>
+
+            <!-- Habit List Section -->
+            <div class="bg-yellow-50 p-6 rounded-2xl shadow-inner border border-yellow-200">
+                <h2 class="text-2xl font-bold text-yellow-700 mb-4">Your Habits</h2>
+                <!-- Moved no-habits-message-list outside habit-list to prevent it from being cleared -->
+                <p id="no-habits-message-list" class="text-gray-500 italic mb-4">No habits added yet. Add one above!</p>
+                <div id="habit-list" class="space-y-4">
+                    <!-- Habits will be injected here by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Box for notifications -->
+    <div id="message-box" class="message-box"></div>
+
+    <script type="module">
+        // Firebase imports (placeholder for future persistence)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase (will be provided by Canvas runtime)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase (even if not using Firestore yet, good for auth setup)
+        let app;
+        let auth;
+        // let db; // Uncomment if using Firestore
+
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            // db = getFirestore(app); // Uncomment if using Firestore
+        } else {
+            console.warn("Firebase config not found. Running without Firebase services.");
+        }
+
+        // --- Data Structures ---
+        class User {
+            constructor(username) {
+                this.username = username;
+                this.total_xp = 0;
+                this.level = 1;
+                this.category_xp = {
+                    "diet": 0,
+                    "exercise": 0,
+                    "reading": 0,
+                    "journaling": 0,
+                    "meditation": 0,
+                };
+                this.badges = new Set();
+                this.habits = {}; // Stores Habit objects by name
+            }
+        }
+
+        class Habit {
+            constructor(name, category) {
+                this.name = name;
+                this.category = category;
+                this.completion_dates = []; // Stores Date objects
+            }
+        }
+
+        // --- Global State ---
+        let currentUser = null; // The currently active user object
+        const XP_REWARD_PER_HABIT = 10; // Define a constant for XP reward
+
+        // --- Core Game Logic Functions ---
+
+        /**
+         * Calculates the XP required to reach the next level.
+         * XP requirements increase slowly at first and then more quickly.
+         * @param {number} currentLevel The user's current level.
+         * @returns {number} The XP required to reach the next level.
+         */
+        function getXpForNextLevel(currentLevel) {
+            if (currentLevel < 10) {
+                return 10 + (currentLevel - 1) * 10;
+            } else if (currentLevel < 25) {
+                return 100 + (currentLevel - 10) * 50;
+            } else {
+                return 1000 + (currentLevel - 25) * 200;
+            }
+        }
+
+        /**
+         * Defines the XP thresholds for each badge tier.
+         * @returns {object} An object mapping badge tier names to XP thresholds.
+         */
+        function getBadgeTiers() {
+            return {
+                "bronze": 100,
+                "silver": 300,
+                "gold": 600,
+                "platinum": 1000,
+                "master": 1500,
+            };
+        }
+
+        /**
+         * Returns the highest-tier badge earned for a given category's XP.
+         * @param {string} category The habit category (e.g., "reading").
+         * @param {number} xp The XP accumulated in that category.
+         * @returns {string|null} The badge name (e.g., "Master Reading") or null if no badge earned.
+         */
+        function getBadgeName(category, xp) {
+            const tiers = getBadgeTiers();
+            if (xp >= tiers["master"]) {
+                return `Master ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+            } else if (xp >= tiers["platinum"]) {
+                return `Platinum ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+            } else if (xp >= tiers["gold"]) {
+                return `Gold ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+            } else if (xp >= tiers["silver"]) {
+                return `Silver ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+            } else if (xp >= tiers["bronze"]) {
+                return `Bronze ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+            }
+            return null;
+        }
+
+        /**
+         * Maps badge names to specific Tailwind CSS classes for visual styling.
+         * @param {string} badgeName The full name of the badge (e.g., "Bronze Reading", "Capstone of Habits").
+         * @returns {string} Tailwind CSS classes for the badge's visual style.
+         */
+        function getBadgeStyleClasses(badgeName) {
+            if (badgeName.includes("Capstone")) {
+                // Enhanced Capstone styling
+                return "bg-gradient-to-br from-yellow-300 via-purple-500 to-pink-500 text-white text-lg font-extrabold shadow-2xl transform scale-110 ring-4 ring-yellow-400 animate-pulse";
+            } else if (badgeName.includes("Master")) {
+                return "bg-gradient-to-r from-gray-700 to-gray-900 text-yellow-300 font-bold shadow-md ring-1 ring-gray-600";
+            } else if (badgeName.includes("Platinum")) {
+                return "bg-gradient-to-r from-blue-400 to-blue-600 text-white font-semibold shadow-sm";
+            } else if (badgeName.includes("Gold")) {
+                return "bg-yellow-500 text-white font-semibold shadow-sm";
+            } else if (badgeName.includes("Silver")) {
+                return "bg-gray-300 text-gray-800 font-medium";
+            } else if (badgeName.includes("Bronze")) {
+                return "bg-amber-700 text-white font-medium";
+            }
+            return "bg-gray-200 text-gray-700"; // Default
+        }
+
+
+        /**
+         * Checks if the user has earned all 'Master' badges and unlocks/revokes the Capstone Badge.
+         * @param {User} user The current user object.
+         */
+        function checkForCapstoneBadge(user) {
+            let allMasterBadges = true;
+            for (const category in user.category_xp) {
+                const badge = getBadgeName(category, user.category_xp[category]);
+                if (!badge || !badge.includes("Master")) {
+                    allMasterBadges = false;
+                    break;
+                }
+            }
+
+            if (allMasterBadges && !user.badges.has("Capstone of Habits")) {
+                user.badges.add("Capstone of Habits");
+                showMessage("✨ You've earned the Capstone of Habits! ✨", "success");
+            } else if (!allMasterBadges && user.badges.has("Capstone of Habits")) {
+                user.badges.delete("Capstone of Habits");
+                showMessage("💔 Capstone of Habits revoked. Keep striving!", "info");
+            }
+        }
+
+        /**
+         * Adds a new habit for the user.
+         * @param {string} habitName The name of the new habit.
+         * @param {string} category The category the habit belongs to.
+         */
+        function addHabit(habitName, category) {
+            if (!currentUser) {
+                showMessage("Please set your username first!", "error");
+                return;
+            }
+            if (!habitName || !category) {
+                showMessage("Please enter a habit name and select a category.", "error");
+                return;
+            }
+            if (!currentUser.category_xp.hasOwnProperty(category)) {
+                showMessage("Invalid category. Please choose from the provided options.", "error");
+                return;
+            }
+            if (currentUser.habits.hasOwnProperty(habitName)) {
+                showMessage(`'${habitName}' already exists.`, "info");
+                return;
+            }
+
+            currentUser.habits[habitName] = new Habit(habitName, category);
+            showMessage(`'${habitName}' habit added to the '${category}' category.`, "success");
+            updateUI();
+        }
+
+        /**
+         * Checks if a habit in the given category has already been completed today.
+         * @param {string} category The category to check.
+         * @returns {boolean} True if a habit in this category was completed today, false otherwise.
+         */
+        function hasCategoryBeenCompletedToday(category) {
+            const today = new Date().toDateString();
+            for (const habitName in currentUser.habits) {
+                const habit = currentUser.habits[habitName];
+                if (habit.category === category) {
+                    for (const completionDate of habit.completion_dates) {
+                        if (completionDate.toDateString() === today) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Records a habit completion, awards XP, and checks for level-ups and new badges.
+         * @param {string} habitName The name of the habit to complete.
+         */
+        function completeHabit(habitName) {
+            if (!currentUser) {
+                showMessage("Please set your username first!", "error");
+                return;
+            }
+            if (!currentUser.habits.hasOwnProperty(habitName)) {
+                showMessage(`Error: Habit '${habitName}' not found.`, "error");
+                return;
+            }
+
+            const habit = currentUser.habits[habitName];
+
+            // Check if a habit in this category has already been completed today
+            if (hasCategoryBeenCompletedToday(habit.category)) {
+                showMessage(`You've already completed a habit in the '${habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}' category today!`, "warning");
+                return;
+            }
+
+            habit.completion_dates.push(new Date());
+
+            // Award XP
+            currentUser.total_xp += XP_REWARD_PER_HABIT;
+            currentUser.category_xp[habit.category] += XP_REWARD_PER_HABIT;
+
+            showMessage(`✅ Completed '${habitName}'. Gained ${XP_REWARD_PER_HABIT} XP!`, "success");
+
+            // Check for a level-up
+            let xpRequiredForNextLevel = getXpForNextLevel(currentUser.level);
+            while (currentUser.total_xp >= xpRequiredForNextLevel) {
+                currentUser.total_xp -= xpRequiredForNextLevel;
+                currentUser.level += 1;
+                showMessage(`🎉 Congratulations! You have reached Level ${currentUser.level}!`, "success");
+                xpRequiredForNextLevel = getXpForNextLevel(currentUser.level); // Update XP for the new level
+            }
+
+            // Re-evaluate all badges after XP change
+            reEvaluateBadges(currentUser);
+            checkForCapstoneBadge(currentUser); // Re-check capstone after other badges
+
+            updateUI();
+        }
+
+        /**
+         * Undoes the last completion of a habit, subtracts XP, and potentially reverts levels/badges.
+         * @param {string} habitName The name of the habit to undo.
+         */
+        function undoCompleteHabit(habitName) {
+            if (!currentUser) {
+                showMessage("Please set your username first!", "error");
+                return;
+            }
+            if (!currentUser.habits.hasOwnProperty(habitName)) {
+                showMessage(`Error: Habit '${habitName}' not found.`, "error");
+                return;
+            }
+
+            const habit = currentUser.habits[habitName];
+            if (habit.completion_dates.length === 0) {
+                showMessage(`No completions to undo for '${habitName}'.`, "info");
+                return;
+            }
+
+            // Remove the last completion date
+            habit.completion_dates.pop();
+
+            // Subtract XP
+            currentUser.total_xp = Math.max(0, currentUser.total_xp - XP_REWARD_PER_HABIT);
+            currentUser.category_xp[habit.category] = Math.max(0, currentUser.category_xp[habit.category] - XP_REWARD_PER_HABIT);
+
+            showMessage(`↩️ Undid last completion of '${habitName}'. Lost ${XP_REWARD_PER_HABIT} XP.`, "info");
+
+            // Revert level if necessary
+            while (currentUser.level > 1 && currentUser.total_xp < getXpForNextLevel(currentUser.level - 1)) {
+                currentUser.level--;
+                // When leveling down, you 'regain' the XP that was required for the level you just left.
+                // This makes the XP calculation consistent for the new lower level.
+                currentUser.total_xp += getXpForNextLevel(currentUser.level);
+                showMessage(`📉 You have reverted to Level ${currentUser.level}.`, "info");
+            }
+
+            // Re-evaluate all badges after XP change
+            reEvaluateBadges(currentUser);
+            checkForCapstoneBadge(currentUser); // Re-check capstone after other badges
+
+            updateUI();
+        }
+
+        /**
+         * Removes a habit entirely without deducting associated XP.
+         * @param {string} habitName The name of the habit to remove.
+         */
+        function removeHabit(habitName) {
+            if (!currentUser) {
+                showMessage("Please set your username first!", "error");
+                return;
+            }
+            if (!currentUser.habits.hasOwnProperty(habitName)) {
+                showMessage(`Error: Habit '${habitName}' not found.`, "error");
+                return;
+            }
+
+            // Delete the habit from the user's list
+            delete currentUser.habits[habitName];
+
+            // No XP deduction, level reversion, or badge re-evaluation needed here
+            // as per the new requirement to keep all prior XP/levels/badges.
+
+            showMessage(`🗑️ Habit '${habitName}' removed. Your earned XP and progress remain!`, "info"); // Changed message type to info as no XP is lost
+
+            updateUI();
+        }
+
+
+        /**
+         * Re-evaluates all category badges for the user based on current XP.
+         * This function is called after any XP change (gain or loss).
+         * @param {User} user The current user object.
+         */
+        function reEvaluateBadges(user) {
+            const oldBadges = new Set(user.badges); // Snapshot of current badges
+            user.badges.clear(); // Clear all non-Capstone badges
+
+            for (const category in user.category_xp) {
+                const badgeName = getBadgeName(category, user.category_xp[category]);
+                if (badgeName) {
+                    user.badges.add(badgeName);
+                }
+            }
+
+            // Add back Capstone if it was there (it's handled by checkForCapstoneBadge)
+            if (oldBadges.has("Capstone of Habits")) {
+                user.badges.add("Capstone of Habits");
+            }
+
+            // Notify about lost badges
+            oldBadges.forEach(oldBadge => {
+                if (!user.badges.has(oldBadge) && oldBadge !== "Capstone of Habits") {
+                    showMessage(`⬇️ Badge Lost: ${oldBadge}.`, "info");
+                }
+            });
+        }
+
+
+        // --- UI Update Functions ---
+
+        /**
+         * Displays a temporary message box notification.
+         * @param {string} message The message to display.
+         * @param {string} type The type of message (e.g., 'success', 'error', 'info').
+         */
+        function showMessage(message, type = 'info') {
+            const msgBox = document.getElementById('message-box');
+            msgBox.textContent = message;
+            msgBox.className = 'message-box show'; // Reset classes
+            if (type === 'success') {
+                msgBox.style.backgroundColor = '#4CAF50'; // Green
+            } else if (type === 'error') {
+                msgBox.style.backgroundColor = '#f44336'; // Red
+            } else if (type === 'warning') { // New warning type for warnings
+                msgBox.style.backgroundColor = '#ffc107'; // Amber/Yellow
+                msgBox.style.color = '#333'; // Dark text for warning
+            } else {
+                msgBox.style.backgroundColor = '#2196F3'; // Blue (info)
+            }
+
+            setTimeout(() => {
+                msgBox.classList.remove('show');
+            }, 3000); // Message disappears after 3 seconds
+        }
+
+        /**
+         * Updates all UI elements based on the current user's state.
+         */
+        function updateUI() {
+            if (!currentUser) return;
+
+            // Update User Status
+            document.getElementById('display-username').textContent = currentUser.username;
+            document.getElementById('user-level').textContent = currentUser.level;
+            document.getElementById('user-total-xp').textContent = currentUser.total_xp;
+
+            const xpNeeded = getXpForNextLevel(currentUser.level);
+            document.getElementById('xp-to-next-level-total').textContent = xpNeeded;
+
+            const progressPercentage = (currentUser.total_xp / xpNeeded) * 100;
+            document.getElementById('level-progress-bar').style.width = `${Math.min(progressPercentage, 100)}%`;
+
+            // Update Category Progress
+            const categoryProgressContainer = document.getElementById('category-progress-container');
+            categoryProgressContainer.innerHTML = ''; // Clear previous content
+
+            for (const category in currentUser.category_xp) {
+                const xp = currentUser.category_xp[category];
+                const categoryBadge = getBadgeName(category, xp) || 'No Badge';
+                const categoryElement = `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <p class="font-semibold text-gray-700">${category.charAt(0).toUpperCase() + category.slice(1)}:</p>
+                        <p class="text-sm text-gray-600">${xp} XP</p>
+                        <p class="text-sm text-gray-600">Badge: <span class="font-medium text-purple-600">${categoryBadge}</span></p>
+                    </div>
+                `;
+                categoryProgressContainer.innerHTML += categoryElement;
+            }
+
+            // Update Badges Display
+            const badgesDisplay = document.getElementById('badges-display');
+            const noBadgesMessage = document.getElementById('no-badges-message'); // Get the element
+            badgesDisplay.innerHTML = ''; // Clear previous badge elements
+
+            if (currentUser.badges.size > 0) {
+                noBadgesMessage.classList.add('hidden'); // Hide the "No badges yet" message
+                const sortedBadges = Array.from(currentUser.badges).sort();
+                sortedBadges.forEach(badge => {
+                    // Get the appropriate style classes for the badge
+                    const badgeStyleClasses = getBadgeStyleClasses(badge);
+                    const badgeElement = `
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium shadow-sm ${badgeStyleClasses}">
+                            ${badge.includes("Capstone") ? '🌟' : (badge.includes("Master") ? '✨' : (badge.includes("Platinum") ? '💎' : (badge.includes("Gold") ? '🏆' : (badge.includes("Silver") ? '🥈' : '🥉'))))} ${badge}
+                        </span>
+                    `;
+                    badgesDisplay.innerHTML += badgeElement;
+                });
+            } else {
+                noBadgesMessage.classList.remove('hidden'); // Show the "No badges yet" message
+            }
+
+            // Update Habit List
+            const habitList = document.getElementById('habit-list');
+            const noHabitsMessageList = document.getElementById('no-habits-message-list');
+            habitList.innerHTML = ''; // Clear previous content
+
+            if (Object.keys(currentUser.habits).length > 0) {
+                noHabitsMessageList.classList.add('hidden'); // Hide the "No habits added yet" message
+                for (const habitName in currentUser.habits) {
+                    const habit = currentUser.habits[habitName];
+                    const habitElement = `
+                        <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                            <div>
+                                <p class="font-semibold text-gray-800">${habit.name}</p>
+                                <p class="text-sm text-gray-500">Category: ${habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}</p>
+                            </div>
+                            <div class="flex space-x-2 mt-3 sm:mt-0">
+                                <button data-habit-name="${habit.name}"
+                                        class="complete-habit-btn px-5 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105">
+                                    Complete
+                                </button>
+                                <button data-habit-name="${habit.name}"
+                                        class="undo-habit-btn px-5 py-2 bg-gray-400 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105">
+                                    Undo
+                                </button>
+                                <button data-habit-name="${habit.name}"
+                                        class="remove-habit-btn px-5 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105">
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    habitList.innerHTML += habitElement;
+                }
+                // Add event listeners to newly created "Complete", "Undo", and "Remove" buttons
+                document.querySelectorAll('.complete-habit-btn').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const habitName = event.target.dataset.habitName;
+                        completeHabit(habitName);
+                    });
+                });
+                document.querySelectorAll('.undo-habit-btn').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const habitName = event.target.dataset.habitName;
+                        undoCompleteHabit(habitName);
+                    });
+                });
+                document.querySelectorAll('.remove-habit-btn').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const habitName = event.target.dataset.habitName;
+                        removeHabit(habitName);
+                    });
+                });
+            } else {
+                noHabitsMessageList.classList.remove('hidden'); // Show the "No habits added yet" message
+            }
+        }
+
+        // --- Event Listeners ---
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Attempt to sign in anonymously if Firebase is initialized
+            if (auth) {
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Signed in with custom token.");
+                    } else {
+                        await signInAnonymously(auth);
+                        console.log("Signed in anonymously.");
+                    }
+                    // You can get the user ID here if needed for Firestore
+                    // const userId = auth.currentUser?.uid || crypto.randomUUID();
+                } catch (error) {
+                    console.error("Firebase authentication error:", error);
+                }
+            }
+
+            // Set Username Button
+            document.getElementById('set-username-btn').addEventListener('click', () => {
+                const usernameInput = document.getElementById('username-input').value.trim();
+                if (usernameInput) {
+                    currentUser = new User(usernameInput);
+                    document.getElementById('user-setup').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    updateUI();
+                    showMessage(`Welcome, ${usernameInput}! Your habit journey begins!`, "success");
+                } else {
+                    showMessage("Please enter a username to start.", "error");
+                }
+            });
+
+            // Add Habit Button
+            document.getElementById('add-habit-btn').addEventListener('click', () => {
+                const newHabitName = document.getElementById('new-habit-name').value.trim();
+                const newHabitCategory = document.getElementById('new-habit-category').value;
+                addHabit(newHabitName, newHabitCategory);
+                // Clear input fields after adding
+                document.getElementById('new-habit-name').value = '';
+                document.getElementById('new-habit-category').value = '';
+            });
+        });
+    </script>
+</body>
+</html>
